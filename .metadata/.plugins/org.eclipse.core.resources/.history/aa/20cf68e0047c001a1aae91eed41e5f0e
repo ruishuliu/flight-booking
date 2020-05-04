@@ -1,0 +1,93 @@
+package booking.flightservice.resources;
+
+
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import com.mongodb.MongoClient;
+
+import booking.flightservice.models.Flight;
+
+
+@RestController
+@RequestMapping("/flight")
+public class FlightResource{
+
+	@Autowired
+	private MongoClient mongoClient;
+	
+	@Autowired
+	private MongoTemplate mongoTemplate;
+	
+	//private Map<String, List<UserItem>> dataset;
+	
+	@Bean
+	MongoClient mongoClient() {
+		return new MongoClient("localhost",27017);
+	}
+	
+	@Bean
+	MongoTemplate mongoTemplate() {
+		return new MongoTemplate(mongoClient, "local");
+	}
+	
+	// insert a flight
+	@RequestMapping(value ="/insert", method=RequestMethod.POST)
+	public ResponseEntity<Flight> newFlight(@RequestBody Flight flight) {
+		try {
+			mongoTemplate.insert(flight);
+		}catch (Exception ex) {
+			return new ResponseEntity<Flight>(HttpStatus.UNPROCESSABLE_ENTITY);
+		}
+		return new ResponseEntity<Flight>(HttpStatus.CREATED);
+	}
+	
+	// delete a flight by flightID or _id
+	@RequestMapping(value="/delete", method=RequestMethod.POST)
+	public ResponseEntity<Flight> delFlight(@RequestBody Flight flight){
+		
+		Query query = new Query();
+		
+		if ( flight.getFlightID() != null)
+			query.addCriteria(Criteria.where("flightID").is(flight.getFlightID()));
+		else if(flight.getId() != null)
+			query.addCriteria(Criteria.where("id").is(flight.getId()));
+		else 
+			return new ResponseEntity<Flight>(HttpStatus.OK);
+		
+		try {
+			mongoTemplate.findAllAndRemove(query, Flight.class);
+		} catch( Exception ex) {
+			return  new ResponseEntity<Flight>(HttpStatus.UNPROCESSABLE_ENTITY);
+		}
+		return new ResponseEntity<Flight>(HttpStatus.OK);
+			
+	}
+	
+	// update info
+	@RequestMapping(value = "/update", method=RequestMethod.POST)
+	public ResponseEntity<Flight> updateFlight(@RequestBody Flight flight){
+		
+		Query query = new Query();
+		Update update = new Update();
+		
+		if(flight.getId() != null)
+			query.addCriteria(Criteria.where("id").is(flight.getId()));
+		else if (flight.getFlightID() != null)
+			query.addCriteria(Criteria.where("flightID").is(flight.getFlightID()));
+		else 
+			return new ResponseEntity<Flight>(HttpStatus.OK);
+			
+	}
+}
+ 

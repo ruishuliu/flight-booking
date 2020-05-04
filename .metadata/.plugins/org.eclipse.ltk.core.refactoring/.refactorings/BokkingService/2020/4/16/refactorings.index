@@ -1,0 +1,4 @@
+1586768037798	Rename type 'BokkingServiceApplication'
+1586768053986	Rename type 'BokkingServiceApplicationTests'
+1586951250347	Extract method 'getBookingDetail'
+1587121159842	Delete element
