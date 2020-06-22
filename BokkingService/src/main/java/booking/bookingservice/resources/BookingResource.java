@@ -3,6 +3,7 @@ package booking.bookingservice.resources;
 import java.util.Collection;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -26,17 +28,30 @@ import java.util.ArrayList;
 import java.util.Calendar;
 
 import org.springframework.web.bind.annotation.RequestParam;
+
 @RestController
 @RequestMapping("/booking")
 public class BookingResource {
 	
-	private final static String userUrl = "http://localhost:8081/user";
-	private final static String flightUrl = "http://localhost:8082/flight";
-	private final static String db = "local";
-	private final static String mongo= "localhost";
+//	private final static String userUrl = "http://localhost:8081/user";
+//	private final static String flightUrl = "http://localhost:8082/flight";
+//	private final static String db = "local";
+//	private final static String mongo= "localhost";
 	
 	private final static int firstSeatMax =20; // 1-20
 	private final static int ecoSeatMax =100;   //21-100
+	
+	@Value("${userUrl}")
+	private String userUrl = "http://localhost:8081/user";
+	
+	@Value("${flightUrl}")
+	private String flightUrl = "http://localhost:8082/flight";
+	
+	@Value("${db}")
+	private String db = "local";
+	
+	@Value("${dbhost}")
+	private String mongo= "localhost";
 	
 	@Autowired
 	private MongoClient mongoClient;
@@ -62,7 +77,7 @@ public class BookingResource {
 		return new RestTemplate();
 	}
 	
-	//search booking info by username
+	//retrieve booking info by username
 	@RequestMapping( method=RequestMethod.GET)
 	public ResponseEntity<BookingDetail> getBooking(@RequestParam("username") String username) {
 		
@@ -86,7 +101,7 @@ public class BookingResource {
 		
 		Query query = new Query();
 		query.addCriteria(Criteria.where("ticketID").is(ticketID));
-		System.out.print(query);
+
 		Booking booking = mongoTemplate.findOne(query, Booking.class);
 		
 		Passenger passenger = getPassengerInfo(2,booking.getPassengerID());
@@ -95,6 +110,22 @@ public class BookingResource {
 		
 		return new ResponseEntity<BookingDetail>(detail,HttpStatus.OK);
 	}
+	
+	//Retrieve all the bookings
+	@RequestMapping(value = "/bookings", method = RequestMethod.GET)
+	public ResponseEntity <Collection<Booking>> searchBookings(){
+
+		Query query = new Query();
+		List<Booking> result = mongoTemplate.find(query, Booking.class);
+		if (result == null) {
+			throw new ResponseStatusException(
+					HttpStatus.UNPROCESSABLE_ENTITY,
+					"NO user found");
+			
+		}else 
+			return new ResponseEntity<Collection<Booking>>(result, HttpStatus.OK);
+	}
+	
 	
 	//search flights
 	@RequestMapping(value="/flights", method = RequestMethod.GET)
@@ -165,27 +196,27 @@ public class BookingResource {
 	}
 	
 	//delete a booking info
-	@RequestMapping(method = RequestMethod.DELETE)
-	public ResponseEntity<Booking> delBooking(@RequestBody Booking booking){
+	@RequestMapping(value="/{ticketID}" , method = RequestMethod.DELETE)
+	public ResponseEntity<Booking> delBooking(@PathVariable ("ticketID") String ticketID){
+		
+		
+		Query query2 = new Query();
+		query2.addCriteria(Criteria.where("ticketID").is(ticketID));
+		Booking booking = mongoTemplate.findOne(query2, Booking.class);
 		
 		//delete the passenger
-		
 		Query query= new Query();
 		query.addCriteria(Criteria.where("passengerID").is(booking.getPassengerID()));
 		
 		mongoTemplate.remove(query, Passenger.class);
 		
 		//delete the booking info
-		Query query2 = new Query();
-		query2.addCriteria(Criteria.where("ticketID").is(booking.getTicketID()));
-
 		try {
 			mongoTemplate.remove(query2, Booking.class);
 		} catch( Exception ex) {
 			return  new ResponseEntity<Booking>(HttpStatus.UNPROCESSABLE_ENTITY);
 		}
 		return new ResponseEntity<Booking>(HttpStatus.OK);
-		//update seat info
 		
 	}
 	
@@ -289,7 +320,6 @@ public class BookingResource {
 		}
 		else 
 			query.addCriteria(Criteria.where("passengerID").is(info));
-		
 		Passenger passenger = mongoTemplate.findOne(query,Passenger.class);
 		return passenger;
 	}

@@ -4,7 +4,7 @@ import booking.userservice.models.UserItem;
 
 import java.util.Map;
 import java.util.List;
-
+import java.util.Collection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -72,18 +72,17 @@ public class UserResource {
 	
 	
 	@RequestMapping(method = RequestMethod.GET)
-	public ResponseEntity<UserItem> showUser(@RequestParam(value="username",required=true) String name) {
-		Query query = new Query()
-				.addCriteria(Criteria.where("username").is(name));
-		
-		UserItem result = mongoTemplate.findOne(query,UserItem.class);
+	public ResponseEntity<Collection<UserItem>> showUsers() {
+		Query query = new Query();
+				
+		List<UserItem> result = mongoTemplate.find(query,UserItem.class);
 		if (result == null) {
 			throw new ResponseStatusException(
 					HttpStatus.UNPROCESSABLE_ENTITY,
 					"NO user found");
 			
 		}else 
-			return new ResponseEntity<UserItem>(result,HttpStatus.OK);
+			return new ResponseEntity<Collection<UserItem>>(result,HttpStatus.OK);
 	}
 
 	// insert a new user
@@ -129,16 +128,12 @@ public class UserResource {
 	}
 	
 	//delete a user by username or Id
-	@RequestMapping(method = RequestMethod.DELETE)
-	public ResponseEntity<UserItem> deleteUser(@RequestBody UserItem user0) {
+	@RequestMapping(value="/{name}",method = RequestMethod.DELETE)
+	public ResponseEntity<UserItem> deleteUser(@PathVariable("name") String name) {
 		
 		Query query = new Query();
-		if (user0.getId() != null)
-			query.addCriteria(Criteria.where("Id").is(user0.getId()));
-		else if (user0.getUserName() != null)	
-			query.addCriteria(Criteria.where("username").is(user0.getUserName()));
-		else 
-			return new ResponseEntity<UserItem>(HttpStatus.OK);
+		query.addCriteria(Criteria.where("username").is(name));
+	
 		try {
 			mongoTemplate.remove(query, UserItem.class);
 		} catch (Exception ex) {

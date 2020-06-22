@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -59,24 +60,18 @@ public class FlightResource{
 	}
 	
 	// delete a flight by flightID or _id
-	@RequestMapping(method=RequestMethod.DELETE)
-	public ResponseEntity<Flight> delFlight(@RequestBody Flight flight){
+	@RequestMapping(value="/{flightID}", method=RequestMethod.DELETE)
+	public ResponseEntity<Flight> delFlight(@PathVariable("flightID") String flightID){
 		
 		Query query = new Query();
-		
-		if ( flight.getFlightID() != null)
-			query.addCriteria(Criteria.where("flightID").is(flight.getFlightID()));
-		else if(flight.getId() != null)
-			query.addCriteria(Criteria.where("id").is(flight.getId()));
-		else 
-			return new ResponseEntity<Flight>(HttpStatus.OK);
-		
+		query.addCriteria(Criteria.where("flightID").is(flightID));
+	
 		try {
 			mongoTemplate.findAllAndRemove(query, Flight.class);
 		} catch( Exception ex) {
 			return  new ResponseEntity<Flight>(HttpStatus.UNPROCESSABLE_ENTITY);
 		}
-		return new ResponseEntity<Flight>(flight,HttpStatus.OK);
+		return new ResponseEntity<Flight>(HttpStatus.OK);
 			
 	}
 	
@@ -124,7 +119,23 @@ public class FlightResource{
 		return new ResponseEntity<FlightDetail>(flightDetail,HttpStatus.OK) ;
 		
 	}
-
+	
+    //retrieve all flights
+	@RequestMapping(value="/flights", method=RequestMethod.GET)
+	public ResponseEntity<Collection<Flight>> allFlights() {
+		
+		Query query = new Query();
+		List<Flight> result = mongoTemplate.find(query,Flight.class);
+		if (result == null) {
+			throw new ResponseStatusException(
+					HttpStatus.UNPROCESSABLE_ENTITY,
+					"NO user found");
+		}
+		else
+			return new ResponseEntity<Collection<Flight>>(result, HttpStatus.OK);
+		
+	}	
+	
 	//search flights
 	@RequestMapping(method = RequestMethod.GET)
 	public ResponseEntity<Collection<FlightDetail>> searchbyDate(@RequestParam(value="departureDate",required=true) String depDate,
